@@ -1,0 +1,57 @@
+# $xxxと書けば、その値を.envから取得可能。
+
+# composeバージョンの確認
+# https://docs.docker.com/compose/compose-file/compose-versioning/
+version: "3.8"
+
+services:
+  db:
+    image: postgres:16.2-alpine
+    environment:
+      # OSのタイムゾーン。UTC...世界標準時間
+      TZ: UTC
+      # PGTZ...postgresのタイムゾーン。デフォルトもUTCなので原則なくてもOK
+      PGTZ: UTC
+      POSTGRES_PASSWORD: $POSTGRES_PASSWORD
+    # ホスト側のディレクトリをコンテナで使用する
+    # ホストパス(絶対or相対パス):コンテナパス(絶対パス)で設定
+    # これがないと毎回docker buildしないと値が更新できなくなる。
+    # 逆を言えばこれを指定することで、リアルタイムで変更を反映できる。(+データの永続化のため)
+    volumes:
+      - "./api/tmp/db:/var/lib/postgresql/data"
+
+  api:
+    # argsを指定しなくてもいい場合、
+    # build: ./api
+    # と書いてもOK
+    build:
+      context: ./api
+      args:
+        WORKDIR: $WORKDIR
+    environment:
+      POSTGRES_PASSWORD: $POSTGRES_PASSWORD
+    volumes:
+      - "./api:/$WORKDIR"
+    # サービスの依存関係（api起動前にdbを起動する、サービス起動順の定義とも言える）
+    depends_on:
+      - db
+    # 公開用ポートを指定
+    # 公開したいポート番号:コンテナポート(railsのデフォルトポート)
+    ports:
+      - "$API_PORT:3000"
+
+  front:
+    build:
+      context: ./front
+      args:
+        WORKDIR: $WORKDIR
+    # コンテナで実行したいコマンド。DockerfileのCMDと同じ。
+    # frontだけdocker-composeで定義するのは、production環境ではコマンドが変わるため。
+    # そもそもこのdocker-compose.ymlは開発環境のみ使うもの。
+    command: yarn run dev
+    volumes:
+      - "./front:/$WORKDIR"
+    ports:
+      - "$FRONT_PORT:3000"
+    depends_on:
+      - api
