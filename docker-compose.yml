@@ -30,6 +30,7 @@ services:
         WORKDIR: $WORKDIR
     environment:
       POSTGRES_PASSWORD: $POSTGRES_PASSWORD
+      API_DOMAIN: "localhost:$FRONT_PORT"
     volumes:
       - "./api:/$WORKDIR"
     # サービスの依存関係（api起動前にdbを起動する、サービス起動順の定義とも言える）
@@ -45,6 +46,7 @@ services:
       context: ./front
       args:
         WORKDIR: $WORKDIR
+        API_URL: "http://localhost:$API_PORT"
     # コンテナで実行したいコマンド。DockerfileのCMDと同じ。
     # frontだけdocker-composeで定義するのは、production環境ではコマンドが変わるため。
     # そもそもこのdocker-compose.ymlは開発環境のみ使うもの。
